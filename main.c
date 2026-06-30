@@ -12,61 +12,6 @@ static void mostrarMenu(void) {
     printf("8. Guardar y salir\n");
 }
 
-static void ingresarActualizarZona(SistemaZonas *sistema) {
-    if (sistema == NULL) {
-        return;
-    }
-
-    char mensaje[50];
-    sprintf(mensaje, "Ingrese ID de zona (1-%d): ", MAX_ZONAS);
-    int id = leerEntero(mensaje, 1, MAX_ZONAS);
-    Zona nuevaZona;
-    nuevaZona.id = id;
-    nuevaZona.activo = 1;
-
-    printf("Ingrese nombre de la zona: ");
-    if (fgets(nuevaZona.nombre, sizeof(nuevaZona.nombre), stdin) == NULL) {
-        return;
-    }
-    size_t len = strlen(nuevaZona.nombre);
-    if (len > 0 && nuevaZona.nombre[len - 1] == '\n') {
-        nuevaZona.nombre[len - 1] = '\0';
-    }
-    while (!validarCadena(nuevaZona.nombre)) {
-        printf("Nombre invalido. Intente nuevamente: ");
-        if (fgets(nuevaZona.nombre, sizeof(nuevaZona.nombre), stdin) == NULL) {
-            return;
-        }
-        len = strlen(nuevaZona.nombre);
-        if (len > 0 && nuevaZona.nombre[len - 1] == '\n') {
-            nuevaZona.nombre[len - 1] = '\0';
-        }
-    }
-
-    nuevaZona.contaminacionActual = leerFlotante("Ingrese contaminacion actual (0-500): ", 0.0f, 500.0f);
-    nuevaZona.temperaturaActual = leerFlotante("Ingrese temperatura actual en C (-40.0-60.0): ", -40.0f, 60.0f);
-    nuevaZona.humedadActual = leerFlotante("Ingrese humedad actual en % (0.0-100.0): ", 0.0f, 100.0f);
-
-    int indiceExistente = buscarZonaPorId(sistema, id);
-    if (indiceExistente != -1) {
-        Zona *zonaExistente = &sistema->zonas[indiceExistente];
-        nuevaZona.diasHistorico = zonaExistente->diasHistorico;
-        memcpy(nuevaZona.historicoContaminacion, zonaExistente->historicoContaminacion, sizeof(zonaExistente->historicoContaminacion));
-        actualizarRegistroHistorico(&nuevaZona, nuevaZona.contaminacionActual);
-        sistema->zonas[indiceExistente] = nuevaZona;
-        printf("Zona actualizada correctamente.\n");
-    } else {
-        nuevaZona.diasHistorico = 0;
-        memset(nuevaZona.historicoContaminacion, 0, sizeof(nuevaZona.historicoContaminacion));
-        actualizarRegistroHistorico(&nuevaZona, nuevaZona.contaminacionActual);
-        if (agregarOActualizarZona(sistema, &nuevaZona)) {
-            printf("Zona agregada correctamente.\n");
-        } else {
-            printf("No se pudo agregar la zona. El sistema ya contiene el maximo de zonas.\n");
-        }
-    }
-}
-
 static void buscarZona(SistemaZonas *sistema) {
     if (sistema == NULL) {
         return;
