@@ -9,8 +9,7 @@ static void mostrarMenu(void) {
     printf("5. Mostrar promedios historicos (ultimos 30 dias)\n");
     printf("6. Buscar una zona especifica por nombre/ID\n");
     printf("7. Eliminar zona\n");
-    printf("8. Buscar zonas por texto en nombre\n");
-    printf("9. Guardar y salir\n");
+    printf("8. Guardar y salir\n");
 }
 
 static void ingresarActualizarZona(SistemaZonas *sistema) {
@@ -18,7 +17,9 @@ static void ingresarActualizarZona(SistemaZonas *sistema) {
         return;
     }
 
-    int id = leerEntero("Ingrese ID de zona (1-5): ", 1, MAX_ZONAS);
+    char mensaje[50];
+    sprintf(mensaje, "Ingrese ID de zona (1-%d): ", MAX_ZONAS);
+    int id = leerEntero(mensaje, 1, MAX_ZONAS);
     Zona nuevaZona;
     nuevaZona.id = id;
     nuevaZona.activo = 1;
@@ -109,21 +110,6 @@ static void buscarZona(SistemaZonas *sistema) {
     }
 }
 
-static void buscarZonasTexto(SistemaZonas *sistema) {
-    if (sistema == NULL) {
-        return;
-    }
-    char texto[MAX_NOMBRE];
-    printf("Ingrese texto para buscar en nombres de zona: ");
-    if (fgets(texto, sizeof(texto), stdin) == NULL) {
-        return;
-    }
-    size_t len = strlen(texto);
-    if (len > 0 && texto[len - 1] == '\n') {
-        texto[len - 1] = '\0';
-    }
-    buscarZonasCoincidentes(sistema, texto);
-}
 
 static void eliminarZonaUsuario(SistemaZonas *sistema) {
     if (sistema == NULL) {
@@ -171,10 +157,8 @@ int main(void) {
             case 7:
                 eliminarZonaUsuario(&sistema);
                 break;
+            
             case 8:
-                buscarZonasTexto(&sistema);
-                break;
-            case 9:
                 if (guardarDatosBinario(&sistema, NOMBRE_ARCHIVO)) {
                     printf("Datos guardados correctamente en '%s'.\n", NOMBRE_ARCHIVO);
                 } else {
