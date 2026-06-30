@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_ZONAS 5
+#define MAX_ZONAS 50
 #define MAX_NOMBRE 50
 #define MAX_HISTORICO 30
 #define NOMBRE_ARCHIVO "zonas.dat"
