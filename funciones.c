@@ -1,5 +1,54 @@
 #include "funciones.h"
 
+static int validarFecha(const Fecha *fecha) {
+    if (fecha == NULL) {
+        return 0;
+    }
+    if (fecha->anio < 1900 || fecha->anio > 2100) {
+        return 0;
+    }
+    if (fecha->mes < 1 || fecha->mes > 12) {
+        return 0;
+    }
+    if (fecha->dia < 1 || fecha->dia > 31) {
+        return 0;
+    }
+    if ((fecha->mes == 4 || fecha->mes == 6 || fecha->mes == 9 || fecha->mes == 11) && fecha->dia > 30) {
+        return 0;
+    }
+    if (fecha->mes == 2) {
+        int bisiesto = (fecha->anio % 400 == 0) || ((fecha->anio % 4 == 0) && (fecha->anio % 100 != 0));
+        int maxDia = bisiesto ? 29 : 28;
+        if (fecha->dia > maxDia) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int leerFecha(Fecha *fecha) {
+    if (fecha == NULL) {
+        return 0;
+    }
+
+    while (1) {
+        fecha->dia = leerEntero("Ingrese dia (1-31): ", 1, 31);
+        fecha->mes = leerEntero("Ingrese mes (1-12): ", 1, 12);
+        fecha->anio = leerEntero("Ingrese anio (1900-2100): ", 1900, 2100);
+        if (validarFecha(fecha)) {
+            return 1;
+        }
+        printf("Fecha invalida. Intente de nuevo.\n");
+    }
+}
+
+float obtenerIndiceContaminacion(const Zona *zona) {
+    if (zona == NULL) {
+        return 0.0f;
+    }
+    return (zona->co2 + zona->so2 + zona->no2 + zona->pm25) / 4.0f;
+}
+
 void inicializarSistema(SistemaZonas *sistema) {
     if (sistema == NULL) {
         return;
@@ -8,9 +57,16 @@ void inicializarSistema(SistemaZonas *sistema) {
     for (int i = 0; i < MAX_ZONAS; i++) {
         sistema->zonas[i].activo = 0;
         sistema->zonas[i].id = i + 1;
-        sistema->zonas[i].contaminacionActual = 0.0f;
+        sistema->zonas[i].co2 = 0.0f;
+        sistema->zonas[i].so2 = 0.0f;
+        sistema->zonas[i].no2 = 0.0f;
+        sistema->zonas[i].pm25 = 0.0f;
+        sistema->zonas[i].velocidadViento = 0.0f;
+        sistema->zonas[i].humedad = 0.0f;
         sistema->zonas[i].temperaturaActual = 0.0f;
-        sistema->zonas[i].humedadActual = 0.0f;
+        sistema->zonas[i].fecha.dia = 0;
+        sistema->zonas[i].fecha.mes = 0;
+        sistema->zonas[i].fecha.anio = 0;
         sistema->zonas[i].diasHistorico = 0;
         sistema->zonas[i].nombre[0] = '\0';
     }
@@ -157,9 +213,16 @@ int eliminarZona(SistemaZonas *sistema, int id) {
 
     sistema->zonas[indice].activo = 0;
     sistema->zonas[indice].nombre[0] = '\0';
-    sistema->zonas[indice].contaminacionActual = 0.0f;
+    sistema->zonas[indice].co2 = 0.0f;
+    sistema->zonas[indice].so2 = 0.0f;
+    sistema->zonas[indice].no2 = 0.0f;
+    sistema->zonas[indice].pm25 = 0.0f;
+    sistema->zonas[indice].velocidadViento = 0.0f;
+    sistema->zonas[indice].humedad = 0.0f;
     sistema->zonas[indice].temperaturaActual = 0.0f;
-    sistema->zonas[indice].humedadActual = 0.0f;
+    sistema->zonas[indice].fecha.dia = 0;
+    sistema->zonas[indice].fecha.mes = 0;
+    sistema->zonas[indice].fecha.anio = 0;
     sistema->zonas[indice].diasHistorico = 0;
     sistema->cantidad--;
     return 1;
@@ -169,12 +232,19 @@ void mostrarZona(const Zona *zona) {
     if (zona == NULL || !zona->activo) {
         return;
     }
-    printf("| %3d | %-20s | %12.2f | %12.2f | %10.2f | %12d |\n",
+    printf("| %3d | %-20s | %8.2f | %8.2f | %8.2f | %8.2f | %8.2f | %8.2f | %8.2f | %02d/%02d/%04d | %3d |\n",
            zona->id,
            zona->nombre,
-           zona->contaminacionActual,
+           zona->co2,
+           zona->so2,
+           zona->no2,
+           zona->pm25,
+           zona->velocidadViento,
+           zona->humedad,
            zona->temperaturaActual,
-           zona->humedadActual,
+           zona->fecha.dia,
+           zona->fecha.mes,
+           zona->fecha.anio,
            zona->diasHistorico);
 }
 
@@ -198,22 +268,30 @@ void mostrarEstadoActual(const SistemaZonas *sistema) {
     }
 
     printf("\nESTADO ACTUAL DE ZONAS\n");
-    printf("-------------------------------------------------------------------------------\n");
-    printf("| ID  | Nombre              | Contaminacion | Temperatura C | Humedad %% | Alertas      |\n");
-    printf("-------------------------------------------------------------------------------\n");
+    printf("--------------------------------------------------------------------------------------------------------------------\n");
+    printf("| ID  | Nombre              | CO2      | SO2      | NO2      | PM2.5    | Viento   | Humedad  | Temp     | Fecha       | Alerta      |\n");
+    printf("--------------------------------------------------------------------------------------------------------------------\n");
     for (int i = 0; i < MAX_ZONAS; i++) {
         if (sistema->zonas[i].activo) {
-            const char *alerta = obtenerAlerta(sistema->zonas[i].contaminacionActual);
-            printf("| %3d | %-20s | %12.2f | %12.2f | %10.2f | %-12s |\n",
+            float indice = obtenerIndiceContaminacion(&sistema->zonas[i]);
+            const char *alerta = obtenerAlerta(indice);
+            printf("| %3d | %-20s | %8.2f | %8.2f | %8.2f | %8.2f | %8.2f | %8.2f | %8.2f | %02d/%02d/%04d | %-12s |\n",
                    sistema->zonas[i].id,
                    sistema->zonas[i].nombre,
-                   sistema->zonas[i].contaminacionActual,
+                   sistema->zonas[i].co2,
+                   sistema->zonas[i].so2,
+                   sistema->zonas[i].no2,
+                   sistema->zonas[i].pm25,
+                   sistema->zonas[i].velocidadViento,
+                   sistema->zonas[i].humedad,
                    sistema->zonas[i].temperaturaActual,
-                   sistema->zonas[i].humedadActual,
+                   sistema->zonas[i].fecha.dia,
+                   sistema->zonas[i].fecha.mes,
+                   sistema->zonas[i].fecha.anio,
                    alerta);
         }
     }
-    printf("-------------------------------------------------------------------------------\n");
+    printf("--------------------------------------------------------------------------------------------------------------------\n");
 }
 
 float calcularPromedioHistorico(const Zona *zona) {
@@ -247,14 +325,14 @@ void generarPrediccion24h(const SistemaZonas *sistema) {
     }
 
     printf("\nPREDICCION 24H\n");
-    printf("-------------------------------------------------------------\n");
+    printf("-------------------------------------------------------------------\n");
     printf("| ID  | Nombre              | Prediccion Contaminacion | Estado Previsto |\n");
-    printf("-------------------------------------------------------------\n");
+    printf("-------------------------------------------------------------------\n");
     for (int i = 0; i < MAX_ZONAS; i++) {
         if (sistema->zonas[i].activo) {
             float prediccion = calcularPromedioPonderado(&sistema->zonas[i]);
             if (prediccion <= 0.0f) {
-                prediccion = sistema->zonas[i].contaminacionActual;
+                prediccion = obtenerIndiceContaminacion(&sistema->zonas[i]);
             }
             const char *alerta = obtenerAlerta(prediccion);
             printf("| %3d | %-20s | %23.2f | %-15s |\n",
@@ -264,7 +342,7 @@ void generarPrediccion24h(const SistemaZonas *sistema) {
                    alerta);
         }
     }
-    printf("-------------------------------------------------------------\n");
+    printf("-------------------------------------------------------------------\n");
 }
 
 void mostrarPromediosHistoricos(const SistemaZonas *sistema) {
@@ -295,20 +373,24 @@ void buscarZonasCoincidentes(const SistemaZonas *sistema, const char *texto) {
     }
 
     printf("\nRESULTADOS DE BUSQUEDA\n");
-    printf("-------------------------------------------------------------\n");
-    printf("| ID  | Nombre              | Contaminacion Actual |\n");
-    printf("-------------------------------------------------------------\n");
+    printf("---------------------------------------------------------------------\n");
+    printf("| ID  | Nombre              | Indice Contaminacion | Fecha       |\n");
+    printf("---------------------------------------------------------------------\n");
     for (int i = 0; i < MAX_ZONAS; i++) {
         if (sistema->zonas[i].activo) {
             if (strstr(sistema->zonas[i].nombre, texto) != NULL) {
-                printf("| %3d | %-20s | %19.2f |\n",
+                float indice = obtenerIndiceContaminacion(&sistema->zonas[i]);
+                printf("| %3d | %-20s | %20.2f | %02d/%02d/%04d |\n",
                        sistema->zonas[i].id,
                        sistema->zonas[i].nombre,
-                       sistema->zonas[i].contaminacionActual);
+                       indice,
+                       sistema->zonas[i].fecha.dia,
+                       sistema->zonas[i].fecha.mes,
+                       sistema->zonas[i].fecha.anio);
             }
         }
     }
-    printf("-------------------------------------------------------------\n");
+    printf("---------------------------------------------------------------------\n");
 }
 
 void actualizarRegistroHistorico(Zona *zona, float nuevoValor) {
@@ -322,6 +404,71 @@ void actualizarRegistroHistorico(Zona *zona, float nuevoValor) {
             zona->historicoContaminacion[i - 1] = zona->historicoContaminacion[i];
         }
         zona->historicoContaminacion[MAX_HISTORICO - 1] = nuevoValor;
+    }
+}
+
+void ingresarActualizarZona(SistemaZonas *sistema) {
+    if (sistema == NULL) {
+        return;
+    }
+
+    char mensaje[60];
+    sprintf(mensaje, "Ingrese ID de zona (1-%d): ", MAX_ZONAS);
+    int id = leerEntero(mensaje, 1, MAX_ZONAS);
+    Zona nuevaZona;
+    nuevaZona.id = id;
+    nuevaZona.activo = 1;
+
+    printf("Ingrese nombre de la zona: ");
+    if (fgets(nuevaZona.nombre, sizeof(nuevaZona.nombre), stdin) == NULL) {
+        return;
+    }
+    size_t len = strlen(nuevaZona.nombre);
+    if (len > 0 && nuevaZona.nombre[len - 1] == '\n') {
+        nuevaZona.nombre[len - 1] = '\0';
+    }
+    while (!validarCadena(nuevaZona.nombre)) {
+        printf("Nombre invalido. Intente nuevamente: ");
+        if (fgets(nuevaZona.nombre, sizeof(nuevaZona.nombre), stdin) == NULL) {
+            return;
+        }
+        len = strlen(nuevaZona.nombre);
+        if (len > 0 && nuevaZona.nombre[len - 1] == '\n') {
+            nuevaZona.nombre[len - 1] = '\0';
+        }
+    }
+
+    nuevaZona.co2 = leerFlotante("Ingrese CO2 (0-1000): ", 0.0f, 1000.0f);
+    nuevaZona.so2 = leerFlotante("Ingrese SO2 (0-1000): ", 0.0f, 1000.0f);
+    nuevaZona.no2 = leerFlotante("Ingrese NO2 (0-1000): ", 0.0f, 1000.0f);
+    nuevaZona.pm25 = leerFlotante("Ingrese PM2.5 (0-1000): ", 0.0f, 1000.0f);
+    nuevaZona.velocidadViento = leerFlotante("Ingrese velocidad del viento (0-200): ", 0.0f, 200.0f);
+    nuevaZona.humedad = leerFlotante("Ingrese humedad (0-100): ", 0.0f, 100.0f);
+    nuevaZona.temperaturaActual = leerFlotante("Ingrese temperatura actual en C (-40.0-60.0): ", -40.0f, 60.0f);
+
+    printf("Ingrese la fecha actual del registro.\n");
+    if (!leerFecha(&nuevaZona.fecha)) {
+        printf("No se pudo leer la fecha.\n");
+        return;
+    }
+
+    int indiceExistente = buscarZonaPorId(sistema, id);
+    if (indiceExistente != -1) {
+        Zona *zonaExistente = &sistema->zonas[indiceExistente];
+        nuevaZona.diasHistorico = zonaExistente->diasHistorico;
+        memcpy(nuevaZona.historicoContaminacion, zonaExistente->historicoContaminacion, sizeof(zonaExistente->historicoContaminacion));
+        actualizarRegistroHistorico(&nuevaZona, obtenerIndiceContaminacion(&nuevaZona));
+        sistema->zonas[indiceExistente] = nuevaZona;
+        printf("Zona actualizada correctamente.\n");
+    } else {
+        nuevaZona.diasHistorico = 0;
+        memset(nuevaZona.historicoContaminacion, 0, sizeof(nuevaZona.historicoContaminacion));
+        actualizarRegistroHistorico(&nuevaZona, obtenerIndiceContaminacion(&nuevaZona));
+        if (agregarOActualizarZona(sistema, &nuevaZona)) {
+            printf("Zona agregada correctamente.\n");
+        } else {
+            printf("No se pudo agregar la zona. El sistema ya contiene el maximo de zonas.\n");
+        }
     }
 }
 
