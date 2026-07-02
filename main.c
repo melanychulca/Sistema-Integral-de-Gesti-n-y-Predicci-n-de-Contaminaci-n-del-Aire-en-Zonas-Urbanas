@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <time.h>
 #include "funciones.h"
 
 static void mostrarMenu(void) {
@@ -12,10 +14,18 @@ static void mostrarMenu(void) {
     printf("8. Guardar y salir\n");
 }
 
+static Fecha obtenerFechaActual(void) {
+    time_t now = time(NULL);
+    struct tm *local = localtime(&now);
+    Fecha fecha = {local->tm_mday, local->tm_mon + 1, local->tm_year + 1900};
+    return fecha;
+}
+
 static void buscarZona(SistemaZonas *sistema) {
     if (sistema == NULL) {
         return;
     }
+
     printf("Buscar por (1) ID o (2) Nombre? ");
     int opcion = leerEntero("Seleccione una opcion (1-2): ", 1, 2);
     if (opcion == 1) {
@@ -25,11 +35,11 @@ static void buscarZona(SistemaZonas *sistema) {
             printf("Zona con ID %d no encontrada.\n", id);
         } else {
             printf("\nZona encontrada:\n");
-            printf("--------------------------------------------------\n");
-            printf("| ID  | Nombre              | Contaminacion | Temperatura | Humedad | Dias Historico |\n");
-            printf("--------------------------------------------------\n");
-            mostrarZona(&sistema->zonas[indice]);
-            printf("--------------------------------------------------\n");
+            printf("-------------------------------------------------------------------------------------------------------------------------\n");
+            printf("| %-3s | %-15s | %-8s | %-8s | %-8s | %-8s | %-8s | %-8s | %-8s | %-10s | %-11s | %-12s |\n", "ID", "Nombre", "CO2", "SO2", "NO2", "PM2.5", "Viento", "Humedad", "Temp", "Fecha", "ICA", "Recomendacion");
+            printf("-------------------------------------------------------------------------------------------------------------------------\n");
+            mostrarZona(sistema, &sistema->zonas[indice]);
+            printf("-------------------------------------------------------------------------------------------------------------------------\n");
         }
     } else {
         char nombreBusqueda[MAX_NOMBRE];
@@ -46,15 +56,14 @@ static void buscarZona(SistemaZonas *sistema) {
             printf("Zona con nombre '%s' no encontrada.\n", nombreBusqueda);
         } else {
             printf("\nZona encontrada:\n");
-            printf("--------------------------------------------------\n");
-            printf("| ID  | Nombre              | Contaminacion | Temperatura | Humedad | Dias Historico |\n");
-            printf("--------------------------------------------------\n");
-            mostrarZona(&sistema->zonas[indice]);
-            printf("--------------------------------------------------\n");
+            printf("-------------------------------------------------------------------------------------------------------------------------\n");
+            printf("| %-3s | %-15s | %-8s | %-8s | %-8s | %-8s | %-8s | %-8s | %-8s | %-10s | %-11s | %-12s |\n", "ID", "Nombre", "CO2", "SO2", "NO2", "PM2.5", "Viento", "Humedad", "Temp", "Fecha", "ICA", "Recomendacion");
+            printf("-------------------------------------------------------------------------------------------------------------------------\n");
+            mostrarZona(sistema, &sistema->zonas[indice]);
+            printf("-------------------------------------------------------------------------------------------------------------------------\n");
         }
     }
 }
-
 
 static void eliminarZonaUsuario(SistemaZonas *sistema) {
     if (sistema == NULL) {
@@ -71,17 +80,20 @@ static void eliminarZonaUsuario(SistemaZonas *sistema) {
 int main(void) {
     SistemaZonas sistema;
     inicializarSistema(&sistema);
-    int ejecutando = 1;
+    if (!cargarDatosBinario(&sistema, NOMBRE_ARCHIVO)) {
+        printf("No se pudo cargar la configuracion inicial. Se inicia sistema vacio.\n");
+    }
 
+    int ejecutando = 1;
     while (ejecutando) {
         mostrarMenu();
-        int opcion = leerEntero("Seleccione una opcion: ", 1, 9);
+        int opcion = leerEntero("Seleccione una opcion: ", 1, 8);
         switch (opcion) {
             case 1:
                 if (cargarDatosBinario(&sistema, NOMBRE_ARCHIVO)) {
                     printf("Datos cargados correctamente desde '%s'.\n", NOMBRE_ARCHIVO);
                 } else {
-                    printf("No se pudo cargar el archivo '%s'. Asegurese de que exista.\n", NOMBRE_ARCHIVO);
+                    printf("No se pudo cargar los datos desde '%s'.\n", NOMBRE_ARCHIVO);
                 }
                 break;
             case 2:
@@ -90,9 +102,11 @@ int main(void) {
             case 3:
                 mostrarEstadoActual(&sistema);
                 break;
-            case 4:
-                generarPrediccion24h(&sistema);
+            case 4: {
+                Fecha fechaActual = obtenerFechaActual();
+                generarPrediccion24h(&sistema, &fechaActual);
                 break;
+            }
             case 5:
                 mostrarPromediosHistoricos(&sistema);
                 break;
@@ -102,7 +116,6 @@ int main(void) {
             case 7:
                 eliminarZonaUsuario(&sistema);
                 break;
-            
             case 8:
                 if (guardarDatosBinario(&sistema, NOMBRE_ARCHIVO)) {
                     printf("Datos guardados correctamente en '%s'.\n", NOMBRE_ARCHIVO);
