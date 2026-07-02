@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-// Esta estructura DEBE ser idéntica a la que usas en tu programa principal
+
 typedef struct {
     int id_zona;
     char nombre[50];
