@@ -1,1 +1,36 @@
+#include <stdio.h>
 
+// Esta estructura DEBE ser idéntica a la que usas en tu programa principal
+typedef struct {
+    int id_zona;
+    char nombre[50];
+    float co2, so2, no2, pm25;
+    float temp, viento, humedad;
+    int dia, mes, anio;
+} Registro;
+
+int main() {
+    FILE *archivo = fopen("zonas.dat", "wb"); // 'wb' crea el archivo y escribe datos
+    
+    if (archivo == NULL) {
+        printf("Error al crear el archivo.\n");
+        return 1;
+    }
+
+    // Datos iniciales de ejemplo para 5 zonas en Quito
+    Registro datos[] = {
+        {1, "Inaquito", 25.5, 5.2, 12.0, 10.5, 18.0, 3.5, 60.0, 1, 7, 2026},
+        {2, "Centro", 40.2, 8.5, 25.0, 22.0, 19.5, 1.2, 55.0, 1, 7, 2026},
+        {3, "Carapungo", 20.0, 4.0, 10.0, 8.0, 17.0, 4.0, 65.0, 1, 7, 2026},
+        {4, "Tumbaco", 18.5, 3.5, 9.0, 7.5, 22.0, 5.0, 50.0, 1, 7, 2026},
+        {5, "Guamani", 35.0, 9.0, 20.0, 18.5, 16.5, 2.0, 70.0, 1, 7, 2026}
+    };
+
+    // Escribimos los 5 registros en el archivo
+    fwrite(datos, sizeof(Registro), 5, archivo);
+    
+    fclose(archivo);
+    printf("Archivo 'zonas.dat' generado exitosamente con 5 registros base.\n");
+    
+    return 0;
+}
